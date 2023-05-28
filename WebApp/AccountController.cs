@@ -1,29 +1,36 @@
-﻿using System.Threading.Tasks;
+﻿using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebApp
 {
-    // TODO 4: unauthorized users should receive 401 status code
     [Route("api/account")]
     public class AccountController : Controller
     {
         private readonly IAccountService _accountService;
+        private readonly IAccountCache _accountCache;
 
-        public AccountController(IAccountService accountService)
+        public AccountController(IAccountService accountService, IAccountCache accountCache)
         {
             _accountService = accountService;
+            _accountCache = accountCache;
         }
 
         [Authorize] 
         [HttpGet]
         public ValueTask<Account> Get()
         {
-            return _accountService.LoadOrCreateAsync(null /* TODO 3: Get user id from cookie */);
+            #region TODO 3: Get user id from cookie
+            return _accountService.LoadOrCreateAsync(
+                User.FindFirst(x => x.Type == 
+                ClaimsIdentity.DefaultNameClaimType).Value);
+            #endregion
         }
 
-        //TODO 5: Endpoint should works only for users with "Admin" Role
-        [Authorize]
+        #region TODO 5: Endpoint should works only for users with "Admin" Role
+        [Authorize(Roles = "Admin")]
+        #endregion
         [HttpGet("{id}")]
         public Account GetByInternalId([FromRoute] int id)
         {
@@ -34,9 +41,11 @@ namespace WebApp
         [HttpPost("counter")]
         public async Task UpdateAccount()
         {
-            //Update account in cache, don't bother saving to DB, this is not an objective of this task.
             var account = await Get();
             account.Counter++;
+            #region TODO 6
+            _accountCache.AddOrUpdate(account);
+            #endregion
         }
     }
 }
